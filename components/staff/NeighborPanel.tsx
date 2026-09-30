@@ -6,6 +6,7 @@ import { AlertCircle, LoaderCircle, Plus, RefreshCw } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 import { formatTimestamp, kgFormat, REQUEST_STATE_LABELS } from "./format";
+import { NotificationToggle, TrackingDetails, useNeighborTracking } from "./NeighborTracking";
 
 type Request = Pick<
   Database["public"]["Tables"]["solicitudes"]["Row"],
@@ -69,6 +70,17 @@ export function NeighborPanel({ userId }: { userId: string }) {
     };
   }, [userId, reloadKey]);
 
+  const hasAssigned =
+    state.status === "ready" && state.requests.some((request) => request.estado === "asignada");
+  const tracking = useNeighborTracking(hasAssigned);
+
+  // Mientras haya recolecciones en camino, refresca los estados para ver cuándo se cierran.
+  useEffect(() => {
+    if (!hasAssigned) return;
+    const intervalId = window.setInterval(() => setReloadKey((key) => key + 1), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [hasAssigned]);
+
   const collectedKg =
     state.status === "ready"
       ? state.requests.reduce(
@@ -90,6 +102,7 @@ export function NeighborPanel({ userId }: { userId: string }) {
           <h1 id="neighbor-title">Mis solicitudes</h1>
         </div>
         <div className="staff-user">
+          {hasAssigned ? <NotificationToggle /> : null}
           <button
             className="location-button"
             disabled={state.status === "loading"}
@@ -144,6 +157,24 @@ export function NeighborPanel({ userId }: { userId: string }) {
                     estimados
                   </span>
                   <span>{formatTimestamp(request.created_at)}</span>
+                  {request.estado === "recolectada" ? (
+                    <span>
+                      Recolectado:{" "}
+                      {kgFormat.format(
+                        request.kg_reales_pet +
+                          request.kg_reales_carton +
+                          request.kg_reales_aluminio +
+                          request.kg_reales_vidrio,
+                      )}{" "}
+                      kg reales
+                    </span>
+                  ) : null}
+                  {request.estado === "asignada" && tracking?.byRequest.get(request.id) ? (
+                    <TrackingDetails
+                      loadedAt={tracking.loadedAt}
+                      tracking={tracking.byRequest.get(request.id)!}
+                    />
+                  ) : null}
                 </div>
                 <span className={`staff-badge staff-badge--${request.estado}`}>
                   {NEIGHBOR_STATE_LABELS[request.estado]}

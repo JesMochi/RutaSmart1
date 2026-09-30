@@ -89,6 +89,11 @@ export interface Database {
         kg_por_hora: number;
         km_base_registro: number;
         km_base_colonia: number;
+        recolector_latitud: number | null;
+        recolector_longitud: number | null;
+        ubicacion_actualizada_at: string | null;
+        porcentaje_carga: number | null;
+        carga_actualizada_at: string | null;
         es_demo: boolean;
         created_at: string;
         updated_at: string;
@@ -128,6 +133,50 @@ export interface Database {
       };
     };
     Functions: {
+      registrar_recoleccion_materiales: {
+        Args: {
+          p_parada_id: string;
+          p_kg_pet: number;
+          p_kg_carton: number;
+          p_kg_aluminio: number;
+          p_kg_vidrio: number;
+        };
+        Returns: {
+          ruta_id: string;
+          paradas_pendientes: number;
+          ruta_completada: boolean;
+        };
+      };
+      registrar_ubicacion_recolector: {
+        Args: { p_ruta_id: string; p_latitud: number; p_longitud: number };
+        Returns: undefined;
+      };
+      registrar_carga_vehiculo: {
+        Args: { p_ruta_id: string; p_porcentaje: number };
+        Returns: undefined;
+      };
+      tiempos_ruta: {
+        Args: { p_ruta_id: string };
+        Returns: Array<{
+          parada_id: string;
+          solicitud_id: string;
+          secuencia: number;
+          minutos_llegada: number;
+          metros_desde_recolector: number | null;
+        }>;
+      };
+      seguimiento_mis_solicitudes: {
+        Args: Record<string, never>;
+        Returns: Array<{
+          solicitud_id: string;
+          ruta_estado: "planeada" | "en_curso";
+          fecha: string;
+          paradas_antes: number;
+          minutos_llegada: number | null;
+          metros_recolector: number | null;
+          ubicacion_actualizada_at: string | null;
+        }>;
+      };
       registrar_recoleccion: {
         Args: {
           p_parada_id: string;

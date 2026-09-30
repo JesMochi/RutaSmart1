@@ -16,6 +16,7 @@ import { fallbackDurationSeconds, haversineDistanceMeters } from "@/lib/distance
 import { buildRoutingPlan, type DistanceValue } from "@/lib/routing/cvrp";
 import {
   formatRouteDate,
+  formatAgo,
   formatTimestamp,
   kgFormat,
   mapsUrl,
@@ -53,7 +54,15 @@ type Parameters = Pick<
 >;
 type Route = Pick<
   Tables["rutas"]["Row"],
-  "id" | "fecha" | "estado" | "kg_estimados" | "kilometros_totales" | "recolector_id" | "vehiculo_id"
+  | "id"
+  | "fecha"
+  | "estado"
+  | "kg_estimados"
+  | "kilometros_totales"
+  | "recolector_id"
+  | "vehiculo_id"
+  | "porcentaje_carga"
+  | "ubicacion_actualizada_at"
 >;
 type Stop = Pick<Tables["paradas"]["Row"], "ruta_id" | "solicitud_id">;
 
@@ -119,7 +128,9 @@ async function loadAdminData(): Promise<AdminData> {
       .single(),
     supabase
       .from("rutas")
-      .select("id, fecha, estado, kg_estimados, kilometros_totales, recolector_id, vehiculo_id")
+      .select(
+        "id, fecha, estado, kg_estimados, kilometros_totales, recolector_id, vehiculo_id, porcentaje_carga, ubicacion_actualizada_at",
+      )
       .eq("zona_id", zoneId)
       .in("estado", ["planeada", "en_curso"])
       .order("fecha")
@@ -662,7 +673,13 @@ export function AdminPanel() {
                         {vehicleNames.get(route.vehiculo_id) ?? "Vehículo"} · {stopCount} paradas ·{" "}
                         {kgFormat.format(route.kg_estimados)} kg · {kgFormat.format(route.kilometros_totales)} km
                       </span>
-                      <span className="staff-card-meta">{ROUTE_STATE_LABELS[route.estado]}</span>
+                      <span className="staff-card-meta">
+                        {ROUTE_STATE_LABELS[route.estado]}
+                        {route.porcentaje_carga !== null ? ` · Carga ${route.porcentaje_carga}%` : ""}
+                        {route.ubicacion_actualizada_at
+                          ? ` · Ubicación ${formatAgo(route.ubicacion_actualizada_at)}`
+                          : ""}
+                      </span>
                     </div>
                     <button
                       aria-label="Cancelar ruta"

@@ -71,3 +71,12 @@ SELECT public.restablecer_demostracion();
 ```
 
 En la aplicación se invocará con `supabase.rpc('restablecer_demostracion')`; la función verifica el rol antes de modificar datos. El rol `anon` no puede ejecutar el restablecimiento ni la función interna de carga.
+## Seguimiento en vivo (migración 006)
+
+Ejecuta `migrations/202609300006_seguimiento_rutas.sql` (idempotente). Agrega:
+
+- **Ubicación del recolector:** al pulsar "Iniciar ruta y compartir ubicación", el celular envía su posición cada 20 segundos mientras la página esté abierta (`registrar_ubicacion_recolector`); la ruta pasa a `en_curso`.
+- **Tiempo estimado de llegada:** `tiempos_ruta` (recolector o administrador) y `seguimiento_mis_solicitudes` (vecino) calculan los minutos hasta cada parada pendiente desde la ubicación reciente del recolector (o la última parada cerrada / el depósito), con la matriz guardada o Haversine × factor, más los minutos fijos por parada.
+- **Alerta de recolector cerca:** el vecino ve un aviso y, si activó las alertas, recibe una notificación del navegador cuando el recolector está a 1 km o menos o su parada es la siguiente. El vecino nunca recibe la ubicación exacta del recolector, solo la distancia.
+- **Carga del vehículo:** el recolector indica qué tan lleno va (`registrar_carga_vehiculo`); el administrador lo ve en Rutas activas.
+- **Kilos reales por material:** `registrar_recoleccion_materiales` guarda PET, cartón, aluminio y vidrio por separado en la misma parada.

@@ -187,6 +187,22 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .stop-kg .field-input { height: 38px; }
 .stop-button { min-height: 38px; padding: 0 12px; }
 .stop-register-error { flex-basis: 100%; }
+.stop-register { align-items: flex-end; }
+.stop-materials { align-items: flex-end; display: flex; flex-wrap: wrap; gap: 8px; }
+.stop-material { display: flex; flex-direction: column; gap: 3px; }
+.stop-material > span:first-child { color: var(--muted); font-size: 10px; font-weight: 800; }
+.stop-add-material { align-items: center; background: transparent; border: 1px dashed #bfc9be; border-radius: 4px; color: var(--forest); cursor: pointer; display: inline-flex; font-size: 11px; font-weight: 800; gap: 4px; min-height: 38px; padding: 0 10px; }
+.stop-register-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.stop-eta { align-items: center; color: var(--forest) !important; display: inline-flex; font-weight: 700; gap: 5px; }
+.nearby-alert { align-items: center; animation: nearby-pulse 1.6s ease-in-out infinite; background: var(--leaf); border-radius: 4px; color: var(--forest-deep); display: inline-flex; font-size: 12px; font-weight: 800; gap: 7px; margin: 4px 0; padding: 7px 10px; }
+@keyframes nearby-pulse { 50% { box-shadow: 0 0 0 5px rgb(200 228 107 / 35%); } }
+.route-tracking { background: var(--sage); border-radius: 6px; display: grid; gap: 12px; padding: 12px 14px; }
+.route-tracking-row { align-items: center; display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.route-tracking .field-error { align-items: center; display: inline-flex; gap: 4px; }
+.route-load { display: grid; gap: 8px; }
+.route-load .field-label { align-items: center; display: inline-flex; gap: 6px; }
+.load-bar { background: white; border: 1px solid var(--line); border-radius: 999px; height: 8px; overflow: hidden; }
+.load-bar > span { background: var(--forest); display: block; height: 100%; transition: width 300ms ease; }
 .icon-button {background: transparent; border: 0; border-radius: 4px; color: #a63d2c; cursor: pointer; display: inline-flex; padding: 6px; }
 .icon-button:hover { background: #f8e6e0; }
 .icon-button:disabled { cursor: wait; opacity: .5; }

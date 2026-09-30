@@ -1,135 +1,90 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
-  Check,
   CheckCircle2,
+  Clock,
   LoaderCircle,
   MapPin,
   Phone,
   RefreshCw,
-  X,
 } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 import {
+  formatEta,
   formatRouteDate,
   kgFormat,
   mapsUrl,
   ROUTE_STATE_LABELS,
   STOP_STATE_LABELS,
 } from "./format";
+import { RouteTracking } from "./RouteTracking";
+import { StopRegistration } from "./StopRegistration";
+
+/** Recarga silenciosa para mantener al día los tiempos estimados. */
+const REFRESH_INTERVAL_MS = 60_000;
 
 type Tables = Database["public"]["Tables"];
-type Route = Pick<Tables["rutas"]["Row"], "id" | "fecha" | "estado" | "kg_estimados" | "capacidad_kg">;
+type Route = Pick<
+  Tables["rutas"]["Row"],
+  | "id"
+  | "fecha"
+  | "estado"
+  | "kg_estimados"
+  | "capacidad_kg"
+  | "porcentaje_carga"
+  | "carga_actualizada_at"
+>;
 type Stop = Pick<Tables["paradas"]["Row"], "id" | "ruta_id" | "solicitud_id" | "secuencia" | "estado">;
 type Request = Pick<
   Tables["solicitudes"]["Row"],
-  "id" | "colonia" | "direccion" | "latitud" | "longitud" | "material" | "kg_estimados" | "telefono"
+  | "id"
+  | "colonia"
+  | "direccion"
+  | "latitud"
+  | "longitud"
+  | "material"
+  | "kg_estimados"
+  | "telefono"
+  | "kg_reales_pet"
+  | "kg_reales_carton"
+  | "kg_reales_aluminio"
+  | "kg_reales_vidrio"
 >;
 
 interface RouteWithStops extends Route {
-  stops: Array<Stop & { request: Request | undefined }>;
+  collectedKg: number;
+  stops: Array<Stop & { request: Request | undefined; etaMinutes: number | undefined }>;
 }
 
 type LoadState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; routes: RouteWithStops[] };
+  | { status: "ready"; routes: RouteWithStops[]; loadedAt: number };
 
-interface StopRegistrationProps {
-  stopId: string;
-  estimatedKg: number;
-  onRegistered: (routeCompleted: boolean) => void;
+function realKg(request: Request): number {
+  return (
+    request.kg_reales_pet +
+    request.kg_reales_carton +
+    request.kg_reales_aluminio +
+    request.kg_reales_vidrio
+  );
 }
 
-function StopRegistration({ stopId, estimatedKg, onRegistered }: StopRegistrationProps) {
-  const [kilograms, setKilograms] = useState(String(estimatedKg));
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-
-  async function register(collected: boolean) {
-    setError("");
-    const kg = Number(kilograms);
-    if (collected && (!Number.isFinite(kg) || kg <= 0 || kg > 10000)) {
-      setError("Indica kilos mayores a 0 y hasta 10,000.");
-      return;
-    }
-    if (!collected && !window.confirm("¿Marcar esta parada como no recolectada?")) return;
-
-    setSending(true);
-    const { data, error: rpcError } = await getSupabaseClient().rpc("registrar_recoleccion", {
-      p_parada_id: stopId,
-      p_recolectada: collected,
-      p_kg_reales: collected ? kg : null,
-    });
-    setSending(false);
-
-    if (rpcError || !data) {
-      setError(
-        rpcError?.code === "PGRST202"
-          ? "Falta aplicar la migración 003 en Supabase."
-          : (rpcError?.message ?? "No se pudo registrar la parada."),
-      );
-      return;
-    }
-    onRegistered(data.ruta_completada);
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    void register(true);
-  }
-
-  return (
-    <form className="stop-register" onSubmit={handleSubmit}>
-      <label className="input-with-unit stop-kg">
-        <input
-          aria-label="Kilos reales recolectados"
-          className="field-input"
-          disabled={sending}
-          inputMode="decimal"
-          max="10000"
-          min="0.1"
-          onChange={(event) => setKilograms(event.target.value)}
-          step="0.1"
-          type="number"
-          value={kilograms}
-        />
-        <span>kg</span>
-      </label>
-      <button className="submit-button stop-button" disabled={sending} type="submit">
-        {sending ? (
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-        ) : (
-          <Check size={16} aria-hidden="true" />
-        )}
-        <span>Recolectada</span>
-      </button>
-      <button
-        className="location-button stop-button"
-        disabled={sending}
-        onClick={() => void register(false)}
-        type="button"
-      >
-        <X size={15} aria-hidden="true" />
-        <span>No se pudo</span>
-      </button>
-      {error ? (
-        <span className="field-error stop-register-error" role="alert">
-          {error}
-        </span>
-      ) : null}
-    </form>
-  );
+async function loadRouteEtas(routeId: string): Promise<Map<string, number>> {
+  const { data, error } = await getSupabaseClient().rpc("tiempos_ruta", { p_ruta_id: routeId });
+  // Sin la migración 006 la ruta se muestra igual, solo sin tiempos estimados.
+  if (error || !data) return new Map();
+  return new Map(data.map((row) => [row.parada_id, row.minutos_llegada]));
 }
 
 async function loadCollectorRoutes(userId: string): Promise<RouteWithStops[]> {
   const supabase = getSupabaseClient();
   const { data: routes, error: routesError } = await supabase
     .from("rutas")
-    .select("id, fecha, estado, kg_estimados, capacidad_kg")
+    .select("id, fecha, estado, kg_estimados, capacidad_kg, porcentaje_carga, carga_actualizada_at")
     .eq("recolector_id", userId)
     .in("estado", ["planeada", "en_curso"])
     .order("fecha")
@@ -145,21 +100,45 @@ async function loadCollectorRoutes(userId: string): Promise<RouteWithStops[]> {
   if (stopsError || !stops) throw new Error("No se pudieron consultar las paradas.");
 
   const requestIds = [...new Set(stops.map((stop) => stop.solicitud_id))];
-  const { data: requests, error: requestsError } = requestIds.length
-    ? await supabase
-        .from("solicitudes")
-        .select("id, colonia, direccion, latitud, longitud, material, kg_estimados, telefono")
-        .in("id", requestIds)
-    : { data: [] as Request[], error: null };
-  if (requestsError || !requests) throw new Error("No se pudieron consultar las solicitudes.");
+  const [requestsResult, etasByRoute] = await Promise.all([
+    requestIds.length
+      ? supabase
+          .from("solicitudes")
+          .select(
+            "id, colonia, direccion, latitud, longitud, material, kg_estimados, telefono, kg_reales_pet, kg_reales_carton, kg_reales_aluminio, kg_reales_vidrio",
+          )
+          .in("id", requestIds)
+      : Promise.resolve({ data: [] as Request[], error: null }),
+    Promise.all(
+      routes.map(async (route) =>
+        [route.id, route.estado === "en_curso" ? await loadRouteEtas(route.id) : new Map()] as const,
+      ),
+    ),
+  ]);
+  if (requestsResult.error || !requestsResult.data) {
+    throw new Error("No se pudieron consultar las solicitudes.");
+  }
 
-  const requestsById = new Map(requests.map((request) => [request.id, request]));
-  return routes.map((route) => ({
-    ...route,
-    stops: stops
+  const requestsById = new Map(requestsResult.data.map((request) => [request.id, request]));
+  const etas = new Map<string, Map<string, number>>(etasByRoute);
+
+  return routes.map((route) => {
+    const routeStops = stops
       .filter((stop) => stop.ruta_id === route.id)
-      .map((stop) => ({ ...stop, request: requestsById.get(stop.solicitud_id) })),
-  }));
+      .map((stop) => ({
+        ...stop,
+        request: requestsById.get(stop.solicitud_id),
+        etaMinutes: etas.get(route.id)?.get(stop.id),
+      }));
+    return {
+      ...route,
+      collectedKg: routeStops.reduce(
+        (total, stop) => total + (stop.request ? realKg(stop.request) : 0),
+        0,
+      ),
+      stops: routeStops,
+    };
+  });
 }
 
 export function CollectorPanel({ userId }: { userId: string }) {
@@ -171,7 +150,7 @@ export function CollectorPanel({ userId }: { userId: string }) {
     let active = true;
     loadCollectorRoutes(userId).then(
       (routes) => {
-        if (active) setState({ status: "ready", routes });
+        if (active) setState({ status: "ready", routes, loadedAt: Date.now() });
       },
       (error: unknown) => {
         if (active) {
@@ -187,9 +166,16 @@ export function CollectorPanel({ userId }: { userId: string }) {
     };
   }, [userId, reloadKey]);
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setReloadKey((key) => key + 1), REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
+
   function handleRegistered(routeCompleted: boolean) {
     setNotice(routeCompleted ? "¡Ruta completada! Gracias por tu recorrido." : "");
-    setReloadKey((key) => key + 1);
+    reload();
   }
 
   return (
@@ -205,7 +191,7 @@ export function CollectorPanel({ userId }: { userId: string }) {
           onClick={() => {
             setNotice("");
             setState({ status: "loading" });
-            setReloadKey((key) => key + 1);
+            reload();
           }}
           type="button"
         >
@@ -243,10 +229,20 @@ export function CollectorPanel({ userId }: { userId: string }) {
                 <h2>{formatRouteDate(route.fecha)}</h2>
                 <span className="staff-badge">{ROUTE_STATE_LABELS[route.estado]}</span>
                 <span className="staff-card-meta">
-                  {route.stops.length} paradas · {kgFormat.format(route.kg_estimados)} de{" "}
-                  {kgFormat.format(route.capacidad_kg)} kg
+                  {route.stops.length} paradas · {kgFormat.format(route.kg_estimados)} kg estimados
                 </span>
               </header>
+
+              <RouteTracking
+                capacityKg={route.capacidad_kg}
+                collectedKg={route.collectedKg}
+                loadPercent={route.porcentaje_carga}
+                loadUpdatedAt={route.carga_actualizada_at}
+                onChanged={reload}
+                routeId={route.id}
+                routeState={route.estado}
+              />
+
               <ol className="stop-list">
                 {route.stops.map((stop) => (
                   <li className="stop-item" key={stop.id}>
@@ -256,8 +252,17 @@ export function CollectorPanel({ userId }: { userId: string }) {
                         <strong>{stop.request.direccion}</strong>
                         <span>
                           {stop.request.colonia} · {stop.request.material} ·{" "}
-                          {kgFormat.format(stop.request.kg_estimados)} kg
+                          {kgFormat.format(stop.request.kg_estimados)} kg estimados
                         </span>
+                        {stop.estado === "pendiente" && stop.etaMinutes !== undefined ? (
+                          <span className="stop-eta">
+                            <Clock size={13} aria-hidden="true" /> Llegada estimada en{" "}
+                            {formatEta(stop.etaMinutes, state.loadedAt)}
+                          </span>
+                        ) : null}
+                        {stop.estado === "recolectada" ? (
+                          <span>Recolectado: {kgFormat.format(realKg(stop.request))} kg reales</span>
+                        ) : null}
                         <span className="stop-actions">
                           <a href={`tel:${stop.request.telefono.replace(/[^0-9+]/g, "")}`}>
                             <Phone size={14} aria-hidden="true" /> {stop.request.telefono}
@@ -274,6 +279,7 @@ export function CollectorPanel({ userId }: { userId: string }) {
                           <StopRegistration
                             estimatedKg={stop.request.kg_estimados}
                             onRegistered={handleRegistered}
+                            requestedMaterial={stop.request.material}
                             stopId={stop.id}
                           />
                         ) : null}
