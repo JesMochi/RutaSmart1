@@ -101,3 +101,33 @@ test("el endpoint limita a tres envíos por dirección en diez minutos", async (
     globalThis.fetch = originalFetch;
   }
 });
+test("con sesión, la solicitud se guarda con el usuario_id de la cuenta", async () => {
+  resetPublicRequestRateLimitForTests();
+  process.env.NEXT_PUBLIC_SUPABASE_URL = "https://rutasmart-test.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "test-publishable-key";
+
+  const originalFetch = globalThis.fetch;
+  const insertedBodies: Array<Record<string, unknown>> = [];
+  const insertAuthHeaders: string[] = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith("/auth/v1/user")) {
+      return Response.json({ id: "11111111-1111-4111-8111-111111111111", aud: "authenticated" });
+    }
+    insertedBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+    insertAuthHeaders.push(new Headers(init?.headers).get("Authorization") ?? "");
+    return new Response(null, { status: 201 });
+  };
+
+  try {
+    const request = requestFor(validPayload, "test-session");
+    request.headers.set("Authorization", "Bearer token-vecino");
+    const response = await POST(request);
+
+    assert.equal(response.status, 201);
+    assert.equal(insertedBodies[0]?.usuario_id, "11111111-1111-4111-8111-111111111111");
+    assert.equal(insertAuthHeaders[0], "Bearer token-vecino");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

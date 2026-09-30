@@ -29,6 +29,10 @@ Usa `'recolector'` en la columna `rol` para una cuenta de recolector. Con la cue
 - **Administrador** (`/panel`): ve todas las solicitudes de la zona, selecciona pendientes y crea una ruta para un recolector, vehículo y fecha. El orden de paradas se calcula con el motor CVRP usando la matriz guardada o, si falta un par, Haversine × factor. Cancelar una ruta devuelve sus solicitudes a pendientes.
 - **Recolector** (`/panel`): ve solo sus rutas planeadas o en curso, con las paradas en orden, teléfono y enlace al mapa. Marca cada parada como recolectada (con kilos reales) o no recolectada; la ruta pasa a `en_curso` y, al cerrar la última parada, a `completada`. Las no recolectadas vuelven a la bandeja del administrador como `sin_asignar`.
 
+- **Vecino** (`/panel`): ve sus propias solicitudes y su estado. Las solicitudes enviadas con sesión iniciada quedan ligadas a su cuenta (`solicitudes.usuario_id`).
+
+Registro público en `/registro`: cualquiera crea una cuenta de **vecino** (activa de inmediato) o **recolector** (queda pendiente hasta que un administrador la aprueba en **Usuarios**). El rol administrador no se puede elegir al registrarse. Requiere `SUPABASE_SERVICE_ROLE_KEY` en el servidor y la migración `migrations/202609290004_registro_publico.sql`.
+
 El registro de paradas requiere ejecutar `migrations/202609290003_registro_recoleccion.sql` en el SQL Editor. La función `registrar_recoleccion` valida que quien llama sea el recolector de la ruta (o un administrador); el recolector sigue sin permisos de escritura directa sobre las tablas. El alta de estos perfiles debe hacerla un administrador del proyecto Supabase; la tabla no permite autoasignarse roles.
 
 ## Acceso por rol

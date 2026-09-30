@@ -17,11 +17,22 @@ import {
   type PublicRequestErrors,
   type RecyclableMaterial,
 } from "@/lib/requests/validation";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 const LocationMap = dynamic(() => import("./LocationMap"), {
   ssr: false,
   loading: () => <div className="map-loading">Cargando mapa…</div>,
 });
+
+/** Si hay sesión, la solicitud queda ligada a la cuenta; si no, se envía como anónima. */
+async function getAccessToken(): Promise<string | null> {
+  try {
+    const { data } = await getSupabaseClient().auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 interface ApiErrorResponse {
   error?: string;
@@ -93,9 +104,13 @@ export function RequestForm() {
 
     setSubmissionState("sending");
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const accessToken = await getAccessToken();
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
       const response = await fetch("/api/solicitudes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(payload),
       });
       const result = (await response.json()) as ApiErrorResponse;

@@ -7,7 +7,7 @@ import type { Database } from "@/lib/supabase/database.types";
 
 export type StaffProfile = Pick<
   Database["public"]["Tables"]["perfiles"]["Row"],
-  "user_id" | "nombre" | "rol"
+  "user_id" | "nombre" | "rol" | "aprobado"
 >;
 
 export type StaffSession =
@@ -23,7 +23,7 @@ async function resolveSession(user: User | null): Promise<StaffSession> {
   // RLS solo deja leer el propio perfil (o todos, si es administrador).
   const { data, error } = await getSupabaseClient()
     .from("perfiles")
-    .select("user_id, nombre, rol")
+    .select("user_id, nombre, rol, aprobado")
     .eq("user_id", user.id)
     .maybeSingle();
 

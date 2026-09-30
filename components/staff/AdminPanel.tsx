@@ -104,7 +104,12 @@ async function loadAdminData(): Promise<AdminData> {
       .eq("zona_id", zoneId)
       .eq("disponible", true)
       .order("nombre"),
-    supabase.from("perfiles").select("user_id, nombre").eq("rol", "recolector").order("nombre"),
+    supabase
+      .from("perfiles")
+      .select("user_id, nombre")
+      .eq("rol", "recolector")
+      .eq("aprobado", true)
+      .order("nombre"),
     supabase
       .from("parametros")
       .select(

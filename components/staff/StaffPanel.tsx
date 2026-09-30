@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertCircle, LoaderCircle } from "lucide-react";
+import { AlertCircle, Clock, LoaderCircle } from "lucide-react";
 import { AdminPanel } from "./AdminPanel";
 import { CollectorPanel } from "./CollectorPanel";
+import { NeighborPanel } from "./NeighborPanel";
 import { StaffHeader } from "./StaffHeader";
 import { UsersPanel } from "./UsersPanel";
 import { signOut, useStaffSession } from "./useStaffSession";
@@ -12,6 +13,7 @@ import { signOut, useStaffSession } from "./useStaffSession";
 const ROLE_LABELS = {
   administrador: "Administración",
   recolector: "Recolector",
+  vecino: "Vecino",
 } as const;
 
 export function StaffPanel() {
@@ -59,8 +61,17 @@ export function StaffPanel() {
               </nav>
               {adminTab === "solicitudes" ? <AdminPanel /> : <UsersPanel />}
             </>
-          ) : (
+          ) : session.profile.rol === "vecino" ? (
+            <NeighborPanel userId={session.user.id} />
+          ) : session.profile.aprobado ? (
             <CollectorPanel userId={session.user.id} />
+          ) : (
+            <div className="staff-main--center">
+              <p className="staff-empty">
+                <Clock size={18} aria-hidden="true" /> Tu cuenta de recolector está pendiente de
+                aprobación. Un administrador debe activarla antes de que puedas recibir rutas.
+              </p>
+            </div>
           )}
         </main>
       </>

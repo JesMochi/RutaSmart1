@@ -177,6 +177,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .stop-actions a { align-items: center; color: var(--forest); display: inline-flex; font-weight: 700; gap: 4px; text-decoration: none; }
 .stop-actions a:hover { text-decoration: underline; }
 .stop-number { align-items: center; background: var(--forest); border-radius: 50%; color: var(--leaf); display: flex; flex: none; font-size: 12px; font-weight: 800; height: 28px; justify-content: center; width: 28px; }
+.field-hint a { color: var(--forest); font-weight: 750; }
+.staff-empty svg { display: inline; vertical-align: -3px; }
 .staff-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
 .staff-badge--sin_recolectar { background: #f8e6e0; color: #883a2e; }
 .stop-item { align-items: flex-start; }

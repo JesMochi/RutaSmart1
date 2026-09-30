@@ -30,6 +30,14 @@ export function checkPublicRequestRateLimit(
   return { allowed: true, retryAfterSeconds: 0 };
 }
 
+export function getClientAddress(request: Request): string {
+  return (
+    request.headers.get("x-real-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "local"
+  );
+}
+
 export function resetPublicRequestRateLimitForTests(): void {
   requestsByAddress.clear();
 }

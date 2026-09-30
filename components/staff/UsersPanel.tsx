@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertCircle, CheckCircle2, LoaderCircle, Trash2, UserPlus } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  LoaderCircle,
+  Trash2,
+  UserCheck,
+  UserPlus,
+} from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import type { NewStaffUserErrors, StaffRole } from "@/lib/users/validation";
 
@@ -9,6 +16,7 @@ interface StaffUser {
   user_id: string;
   nombre: string;
   rol: StaffRole;
+  aprobado: boolean;
   email: string;
 }
 
@@ -22,6 +30,7 @@ type Feedback = { kind: "success" | "error"; message: string } | null;
 const ROLE_LABELS: Record<StaffRole, string> = {
   administrador: "Administrador",
   recolector: "Recolector",
+  vecino: "Vecino",
 };
 
 async function callUsersApi(init?: RequestInit & { query?: string }): Promise<Response> {
@@ -125,6 +134,28 @@ export function UsersPanel() {
     }
   }
 
+  async function handleApprove(user: StaffUser) {
+    setFeedback(null);
+    setWorking(true);
+    try {
+      const response = await callUsersApi({
+        method: "PATCH",
+        query: `?id=${encodeURIComponent(user.user_id)}`,
+        body: JSON.stringify({ aprobado: true }),
+      });
+      if (!response.ok) throw new Error(await readError(response, "No se pudo aprobar la cuenta."));
+      setFeedback({ kind: "success", message: `${user.nombre} ya puede recibir rutas.` });
+      setReloadKey((key) => key + 1);
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : "No se pudo aprobar la cuenta.",
+      });
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function handleDelete(user: StaffUser) {
     if (!window.confirm(`¿Eliminar la cuenta de ${user.nombre}? No se puede deshacer.`)) return;
 
@@ -179,9 +210,23 @@ export function UsersPanel() {
                     {user.nombre}
                     {user.user_id === state.currentUserId ? " (tú)" : ""}
                   </strong>
-                  <span>{user.email || "Sin correo"}</span>
+                  <span>
+                    {user.email || "Sin correo"}
+                    {!user.aprobado ? " · Pendiente de aprobación" : ""}
+                  </span>
                 </div>
                 <span className="staff-badge">{ROLE_LABELS[user.rol]}</span>
+                {!user.aprobado ? (
+                  <button
+                    className="location-button"
+                    disabled={working}
+                    onClick={() => void handleApprove(user)}
+                    type="button"
+                  >
+                    <UserCheck size={15} aria-hidden="true" />
+                    <span>Aprobar</span>
+                  </button>
+                ) : null}
                 {user.user_id !== state.currentUserId ? (
                   <button
                     aria-label={`Eliminar a ${user.nombre}`}
@@ -251,6 +296,7 @@ export function UsersPanel() {
               value={rol}
             >
               <option value="recolector">Recolector</option>
+              <option value="vecino">Vecino</option>
               <option value="administrador">Administrador</option>
             </select>
             {errors.rol ? <span className="field-error">{errors.rol}</span> : null}

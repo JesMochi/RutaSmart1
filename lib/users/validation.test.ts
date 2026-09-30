@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseNewStaffUserInput } from "./validation";
+import { parseNewStaffUserInput, PUBLIC_SIGNUP_ROLES } from "./validation";
 
 const validUser = {
   nombre: "Ana Recolectora",
@@ -28,6 +28,15 @@ test("rechaza correo, contraseña corta y roles desconocidos", () => {
   assert.ok(result.errors.email);
   assert.ok(result.errors.password);
   assert.ok(result.errors.rol);
+});
+
+test("el registro público no permite elegir administrador", () => {
+  const admin = parseNewStaffUserInput({ ...validUser, rol: "administrador" }, PUBLIC_SIGNUP_ROLES);
+  const vecino = parseNewStaffUserInput({ ...validUser, rol: "vecino" }, PUBLIC_SIGNUP_ROLES);
+
+  assert.equal(admin.input, null);
+  assert.ok(admin.errors.rol);
+  assert.equal(vecino.input?.rol, "vecino");
 });
 
 test("rechaza payloads que no sean objetos", () => {

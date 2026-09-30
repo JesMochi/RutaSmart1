@@ -21,7 +21,8 @@ export interface Database {
       perfiles: Table<{
         user_id: string;
         nombre: string;
-        rol: "administrador" | "recolector";
+        rol: "administrador" | "recolector" | "vecino";
+        aprobado: boolean;
         created_at: string;
         updated_at: string;
       }>;
@@ -65,6 +66,7 @@ export interface Database {
         kg_reales_aluminio: number;
         kg_reales_vidrio: number;
         campo_trampa: string | null;
+        usuario_id: string | null;
         es_demo: boolean;
         created_at: string;
         updated_at: string;

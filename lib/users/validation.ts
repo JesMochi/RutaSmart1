@@ -1,6 +1,9 @@
-export const STAFF_ROLES = ["administrador", "recolector"] as const;
+export const STAFF_ROLES = ["administrador", "recolector", "vecino"] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number];
+
+/** Roles que cualquiera puede elegir al registrarse; administrador solo lo asigna otro administrador. */
+export const PUBLIC_SIGNUP_ROLES: ReadonlyArray<StaffRole> = ["vecino", "recolector"];
 
 export interface NewStaffUserInput {
   nombre: string;
@@ -17,7 +20,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function parseNewStaffUserInput(value: unknown): {
+export function parseNewStaffUserInput(
+  value: unknown,
+  allowedRoles: ReadonlyArray<StaffRole> = STAFF_ROLES,
+): {
   input: NewStaffUserInput | null;
   errors: NewStaffUserErrors;
 } {
@@ -38,7 +44,7 @@ export function parseNewStaffUserInput(value: unknown): {
   if (password.length < 8 || password.length > 72) {
     errors.password = "La contraseña debe tener de 8 a 72 caracteres.";
   }
-  if (typeof rol !== "string" || !STAFF_ROLES.includes(rol as StaffRole)) {
+  if (typeof rol !== "string" || !allowedRoles.includes(rol as StaffRole)) {
     errors.rol = "Selecciona un rol válido.";
   }
 

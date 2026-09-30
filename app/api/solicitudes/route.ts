@@ -1,16 +1,8 @@
-import { checkPublicRequestRateLimit } from "@/lib/requests/rate-limit";
+import { checkPublicRequestRateLimit, getClientAddress } from "@/lib/requests/rate-limit";
 import { parsePublicRequestInput } from "@/lib/requests/validation";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { getSupabaseClient, getSupabaseClientForToken } from "@/lib/supabase/client";
 
 export const runtime = "nodejs";
-
-function getClientAddress(request: Request): string {
-  return (
-    request.headers.get("x-real-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "local"
-  );
-}
 
 export async function POST(request: Request) {
   const rateLimit = checkPublicRequestRateLimit(getClientAddress(request));
@@ -61,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { error } = await getSupabaseClient().from("solicitudes").insert({
+    const row = {
       zona_id: input.zonaId,
       colonia: input.colonia,
       direccion: input.direccion,
@@ -71,7 +63,26 @@ export async function POST(request: Request) {
       kg_estimados: input.kgEstimados,
       telefono: input.telefono,
       campo_trampa: "",
-    });
+    };
+
+    // Con sesión, la solicitud se guarda como el usuario para que pueda consultarla después.
+    const accessToken = request.headers.get("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
+    let error: unknown;
+    if (accessToken) {
+      const supabase = getSupabaseClientForToken(accessToken);
+      const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+      if (userError || !userData.user) {
+        return Response.json(
+          { error: "Tu sesión expiró. Vuelve a iniciar sesión o envía sin cuenta." },
+          { status: 401 },
+        );
+      }
+      ({ error } = await supabase
+        .from("solicitudes")
+        .insert({ ...row, usuario_id: userData.user.id }));
+    } else {
+      ({ error } = await getSupabaseClient().from("solicitudes").insert(row));
+    }
 
     if (error) {
       return Response.json(

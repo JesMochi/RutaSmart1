@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle, LoaderCircle, LogIn } from "lucide-react";
@@ -56,10 +57,10 @@ export function LoginForm() {
   return (
     <form className="request-form login-card" onSubmit={handleSubmit} noValidate>
       <div>
-        <span className="eyebrow">Acceso del equipo</span>
+        <span className="eyebrow">Acceso</span>
         <h1 className="login-title">Iniciar sesión</h1>
         <p className="field-hint">
-          Solo para administradores y recolectores registrados.
+          ¿No tienes cuenta? <Link href="/registro">Regístrate</Link>
         </p>
       </div>
 
