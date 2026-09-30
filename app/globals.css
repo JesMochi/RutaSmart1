@@ -201,6 +201,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .route-tracking .field-error { align-items: center; display: inline-flex; gap: 4px; }
 .route-load { display: grid; gap: 8px; }
 .route-load .field-label { align-items: center; display: inline-flex; gap: 6px; }
+.route-map-frame { border: 1px solid var(--line); border-radius: 6px; height: 300px; overflow: hidden; }
+.route-map { height: 100%; width: 100%; z-index: 0; }
+.route-stop-icon { align-items: center; background: var(--forest); border: 2px solid white; border-radius: 50%; box-shadow: 0 1px 4px rgb(0 0 0 / 30%); color: var(--leaf); display: flex; font-size: 12px; font-weight: 800; height: 26px; justify-content: center; width: 26px; }
+.route-stop-icon--next { background: #2f9e44; color: white; transform: scale(1.15); }
+.route-stop-icon--done { background: #9aa39e; color: white; }
 .load-bar { background: white; border: 1px solid var(--line); border-radius: 999px; height: 8px; overflow: hidden; }
 .load-bar > span { background: var(--forest); display: block; height: 100%; transition: width 300ms ease; }
 .icon-button {background: transparent; border: 0; border-radius: 4px; color: #a63d2c; cursor: pointer; display: inline-flex; padding: 6px; }

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
@@ -25,6 +26,13 @@ import { StopRegistration } from "./StopRegistration";
 
 /** Recarga silenciosa para mantener al día los tiempos estimados. */
 const REFRESH_INTERVAL_MS = 60_000;
+/** Igual que en la base: una ubicación más antigua no se muestra en el mapa. */
+const FRESH_LOCATION_MS = 10 * 60_000;
+
+const RouteMap = dynamic(() => import("./RouteMap"), {
+  ssr: false,
+  loading: () => <div className="map-loading">Cargando mapa…</div>,
+});
 
 type Tables = Database["public"]["Tables"];
 type Route = Pick<
@@ -36,6 +44,9 @@ type Route = Pick<
   | "capacidad_kg"
   | "porcentaje_carga"
   | "carga_actualizada_at"
+  | "recolector_latitud"
+  | "recolector_longitud"
+  | "ubicacion_actualizada_at"
 >;
 type Stop = Pick<Tables["paradas"]["Row"], "id" | "ruta_id" | "solicitud_id" | "secuencia" | "estado">;
 type Request = Pick<
@@ -84,7 +95,9 @@ async function loadCollectorRoutes(userId: string): Promise<RouteWithStops[]> {
   const supabase = getSupabaseClient();
   const { data: routes, error: routesError } = await supabase
     .from("rutas")
-    .select("id, fecha, estado, kg_estimados, capacidad_kg, porcentaje_carga, carga_actualizada_at")
+    .select(
+      "id, fecha, estado, kg_estimados, capacidad_kg, porcentaje_carga, carga_actualizada_at, recolector_latitud, recolector_longitud, ubicacion_actualizada_at",
+    )
     .eq("recolector_id", userId)
     .in("estado", ["planeada", "en_curso"])
     .order("fecha")
@@ -232,6 +245,34 @@ export function CollectorPanel({ userId }: { userId: string }) {
                   {route.stops.length} paradas · {kgFormat.format(route.kg_estimados)} kg estimados
                 </span>
               </header>
+
+              <div className="route-map-frame">
+                <RouteMap
+                  collectorPosition={
+                    route.recolector_latitud !== null &&
+                    route.recolector_longitud !== null &&
+                    route.ubicacion_actualizada_at &&
+                    state.loadedAt - new Date(route.ubicacion_actualizada_at).getTime() <
+                      FRESH_LOCATION_MS
+                      ? [route.recolector_latitud, route.recolector_longitud]
+                      : null
+                  }
+                  stops={route.stops.flatMap((stop) =>
+                    stop.request
+                      ? [
+                          {
+                            id: stop.id,
+                            sequence: stop.secuencia,
+                            latitude: stop.request.latitud,
+                            longitude: stop.request.longitud,
+                            label: stop.request.direccion,
+                            done: stop.estado !== "pendiente",
+                          },
+                        ]
+                      : [],
+                  )}
+                />
+              </div>
 
               <RouteTracking
                 capacityKg={route.capacidad_kg}
