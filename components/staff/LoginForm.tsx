@@ -35,9 +35,13 @@ export function LoginForm() {
       });
       if (signInError) {
         setError(
-          signInError.status === 400
-            ? "Correo o contraseña incorrectos."
-            : "No se pudo iniciar sesión. Intenta más tarde.",
+          signInError.code === "email_not_confirmed"
+            ? "La cuenta existe pero su correo no está confirmado. Confírmala en Supabase."
+            : signInError.code === "invalid_credentials" || signInError.status === 400
+              ? "Correo o contraseña incorrectos."
+              : signInError.status === 429
+                ? "Demasiados intentos. Espera unos minutos."
+                : "No se pudo iniciar sesión. Intenta más tarde.",
         );
         return;
       }
