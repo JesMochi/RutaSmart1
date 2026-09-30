@@ -16,6 +16,7 @@ export default function Home() {
           </Link>
           <nav className="header-nav" aria-label="Navegación principal">
             <a href="#impacto">Impacto</a>
+            <Link className="header-login" href="/login">Acceso equipo</Link>
             <a className="header-cta" href="#solicitud">
               Solicitar recolección <ArrowDown size={15} aria-hidden="true" />
             </a>

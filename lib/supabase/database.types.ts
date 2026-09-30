@@ -69,6 +69,40 @@ export interface Database {
         created_at: string;
         updated_at: string;
       }>;
+      rutas: Table<{
+        id: string;
+        zona_id: string;
+        vehiculo_id: string;
+        recolector_id: string | null;
+        fecha: string;
+        estado: "planeada" | "en_curso" | "completada" | "cancelada";
+        capacidad_kg: number;
+        kg_estimados: number;
+        kilometros_totales: number;
+        minutos_estimados: number;
+        litros_estimados: number;
+        costo_combustible: number;
+        costo_por_kg: number;
+        kg_por_km: number;
+        kg_por_hora: number;
+        km_base_registro: number;
+        km_base_colonia: number;
+        es_demo: boolean;
+        created_at: string;
+        updated_at: string;
+      }>;
+      paradas: Table<{
+        id: string;
+        zona_id: string;
+        ruta_id: string;
+        solicitud_id: string;
+        secuencia: number;
+        estado: "pendiente" | "recolectada" | "sin_recolectar";
+        recolectada_at: string | null;
+        es_demo: boolean;
+        created_at: string;
+        updated_at: string;
+      }>;
       matriz_distancias: Table<{
         zona_id: string;
         origen_tipo: "deposito" | "solicitud";
@@ -91,7 +125,20 @@ export interface Database {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      registrar_recoleccion: {
+        Args: {
+          p_parada_id: string;
+          p_recolectada: boolean;
+          p_kg_reales?: number | null;
+        };
+        Returns: {
+          ruta_id: string;
+          paradas_pendientes: number;
+          ruta_completada: boolean;
+        };
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
