@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { AlertCircle, Home, LoaderCircle, Truck, UserPlus } from "lucide-react";
+import { AlertCircle, Home, LoaderCircle, MailCheck, Truck, UserPlus } from "lucide-react";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   parseNewStaffUserInput,
@@ -37,6 +37,7 @@ export function SignupForm() {
   const [errors, setErrors] = useState<NewStaffUserErrors>({});
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,31 +51,77 @@ export function SignupForm() {
       return;
     }
 
+    // Los bots llenan el campo oculto; se simula éxito sin crear la cuenta.
+    if (honeypot.trim()) {
+      setConfirmationSent(true);
+      return;
+    }
+
     setSending(true);
     try {
-      const response = await fetch("/api/registro", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const body = (await response.json().catch(() => ({}))) as {
-        error?: string;
-        fields?: NewStaffUserErrors;
-      };
-      if (!response.ok) {
-        setErrors(body.fields ?? {});
-        throw new Error(body.error ?? "No se pudo completar el registro.");
-      }
-
-      const { error } = await getSupabaseClient().auth.signInWithPassword({
+      // El perfil lo crea el trigger perfiles_crear_al_registrarse con este rol y nombre.
+      const { data, error } = await getSupabaseClient().auth.signUp({
         email: validation.input.email,
         password: validation.input.password,
+        options: {
+          data: { nombre: validation.input.nombre, rol: validation.input.rol },
+          emailRedirectTo: `${window.location.origin}/panel`,
+        },
       });
-      router.replace(error ? "/login" : "/panel");
+
+      if (error) {
+        if (error.code === "user_already_exists" || error.code === "email_exists") {
+          setErrors({ email: "Ya existe una cuenta con ese correo." });
+          throw new Error("Ya existe una cuenta con ese correo. Inicia sesión.");
+        }
+        if (error.code === "weak_password") {
+          setErrors({ password: "Usa una contraseña más segura." });
+          throw new Error("La contraseña es demasiado débil.");
+        }
+        if (error.code === "signup_disabled") {
+          throw new Error("El registro está desactivado en Supabase.");
+        }
+        if (error.status === 429) {
+          throw new Error("Demasiados registros seguidos. Espera unos minutos.");
+        }
+        throw new Error("No se pudo completar el registro. Intenta más tarde.");
+      }
+
+      // Con confirmación por correo activa, un correo ya registrado devuelve un usuario sin identidades.
+      if (data.user && data.user.identities?.length === 0) {
+        setErrors({ email: "Ya existe una cuenta con ese correo." });
+        throw new Error("Ya existe una cuenta con ese correo. Inicia sesión.");
+      }
+
+      if (data.session) {
+        router.replace("/panel");
+        return;
+      }
+      setConfirmationSent(true);
+      setSending(false);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo completar el registro.");
       setSending(false);
     }
+  }
+
+  if (confirmationSent) {
+    return (
+      <div className="request-form login-card">
+        <span className="eyebrow">Revisa tu correo</span>
+        <h1 className="login-title">Confirma tu cuenta</h1>
+        <p className="form-status form-status--success" role="status">
+          <MailCheck size={18} aria-hidden="true" />
+          <span>
+            Te enviamos un enlace de confirmación a {email.trim().toLowerCase()}. Ábrelo y luego
+            inicia sesión.
+          </span>
+        </p>
+        <Link className="submit-button" href="/login">
+          Ir a iniciar sesión
+        </Link>
+      </div>
+    );
   }
 
   return (

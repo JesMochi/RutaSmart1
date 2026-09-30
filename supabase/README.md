@@ -15,7 +15,7 @@ Si ya ejecutaste la migración 001, no la repitas. Ejecuta únicamente `migratio
 
 ## Crear cuentas internas
 
-No habilites registro público. Con `SUPABASE_SERVICE_ROLE_KEY` configurada en el servidor (Vercel), un administrador crea y elimina cuentas desde `/panel` → **Usuarios**; el endpoint `/api/usuarios` verifica su rol antes de usar la llave de servicio.
+Con `SUPABASE_SERVICE_ROLE_KEY` configurada en el servidor (Vercel), un administrador crea y elimina cuentas desde `/panel` → **Usuarios**; el endpoint `/api/usuarios` verifica su rol antes de usar la llave de servicio.
 
 El primer administrador se crea manualmente: crea la cuenta desde **Authentication > Users** y copia su UUID. En SQL Editor, registra el rol correspondiente:
 
@@ -31,7 +31,7 @@ Usa `'recolector'` en la columna `rol` para una cuenta de recolector. Con la cue
 
 - **Vecino** (`/panel`): ve sus propias solicitudes y su estado. Las solicitudes enviadas con sesión iniciada quedan ligadas a su cuenta (`solicitudes.usuario_id`).
 
-Registro público en `/registro`: cualquiera crea una cuenta de **vecino** (activa de inmediato) o **recolector** (queda pendiente hasta que un administrador la aprueba en **Usuarios**). El rol administrador no se puede elegir al registrarse. Requiere `SUPABASE_SERVICE_ROLE_KEY` en el servidor y la migración `migrations/202609290004_registro_publico.sql`.
+Registro público en `/registro`: cualquiera crea una cuenta de **vecino** (activa de inmediato) o **recolector** (queda pendiente hasta que un administrador la aprueba en **Usuarios**). El rol administrador no se puede elegir al registrarse. Usa `supabase.auth.signUp`; el trigger de `migrations/202609290005_perfil_automatico.sql` crea el perfil y solo acepta vecino o recolector. Requiere las migraciones 004 y 005, y que **Authentication → Sign In / Providers → Allow new users to sign up** esté activado. Si **Confirm email** está activado, la cuenta debe confirmarse por correo antes de entrar.
 
 El registro de paradas requiere ejecutar `migrations/202609290003_registro_recoleccion.sql` en el SQL Editor. La función `registrar_recoleccion` valida que quien llama sea el recolector de la ruta (o un administrador); el recolector sigue sin permisos de escritura directa sobre las tablas. El alta de estos perfiles debe hacerla un administrador del proyecto Supabase; la tabla no permite autoasignarse roles.
 
