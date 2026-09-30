@@ -10,6 +10,7 @@
     "test:distances": "tsx --test lib/distances/*.test.ts",
     "test:routing": "tsx --test lib/routing/*.test.ts",
     "test:requests": "tsx --test tests/requests.test.ts",
+    "test:users": "tsx --test lib/users/*.test.ts",
     "routing:compare": "node --conditions=react-server --import tsx scripts/comparar-rutas.ts",
     "distances:preload": "node --conditions=react-server --import tsx scripts/precargar-matriz.ts"
   },

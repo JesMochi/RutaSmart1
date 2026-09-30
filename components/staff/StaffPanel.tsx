@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AlertCircle, LoaderCircle } from "lucide-react";
 import { AdminPanel } from "./AdminPanel";
 import { CollectorPanel } from "./CollectorPanel";
 import { StaffHeader } from "./StaffHeader";
+import { UsersPanel } from "./UsersPanel";
 import { signOut, useStaffSession } from "./useStaffSession";
 
 const ROLE_LABELS = {
@@ -16,6 +17,7 @@ const ROLE_LABELS = {
 export function StaffPanel() {
   const router = useRouter();
   const session = useStaffSession();
+  const [adminTab, setAdminTab] = useState<"solicitudes" | "usuarios">("solicitudes");
 
   useEffect(() => {
     if (session.status === "signed-out") router.replace("/login");
@@ -36,7 +38,27 @@ export function StaffPanel() {
         />
         <main className="staff-main">
           {session.profile.rol === "administrador" ? (
-            <AdminPanel />
+            <>
+              <nav className="staff-tabs" aria-label="Secciones del panel">
+                <button
+                  aria-pressed={adminTab === "solicitudes"}
+                  className="staff-chip"
+                  onClick={() => setAdminTab("solicitudes")}
+                  type="button"
+                >
+                  Solicitudes y rutas
+                </button>
+                <button
+                  aria-pressed={adminTab === "usuarios"}
+                  className="staff-chip"
+                  onClick={() => setAdminTab("usuarios")}
+                  type="button"
+                >
+                  Usuarios
+                </button>
+              </nav>
+              {adminTab === "solicitudes" ? <AdminPanel /> : <UsersPanel />}
+            </>
           ) : (
             <CollectorPanel userId={session.user.id} />
           )}

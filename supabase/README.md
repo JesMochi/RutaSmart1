@@ -15,7 +15,9 @@ Si ya ejecutaste la migración 001, no la repitas. Ejecuta únicamente `migratio
 
 ## Crear cuentas internas
 
-No habilites registro público. Crea cada cuenta desde **Authentication > Users** y copia su UUID. En SQL Editor, registra el rol correspondiente:
+No habilites registro público. Con `SUPABASE_SERVICE_ROLE_KEY` configurada en el servidor (Vercel), un administrador crea y elimina cuentas desde `/panel` → **Usuarios**; el endpoint `/api/usuarios` verifica su rol antes de usar la llave de servicio.
+
+El primer administrador se crea manualmente: crea la cuenta desde **Authentication > Users** y copia su UUID. En SQL Editor, registra el rol correspondiente:
 
 ```sql
 INSERT INTO public.perfiles (user_id, nombre, rol)
