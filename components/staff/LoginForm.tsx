@@ -47,8 +47,11 @@ export function LoginForm() {
         return;
       }
       router.replace("/panel");
-    } catch {
-      setError("El servicio no está disponible. Intenta más tarde.");
+    } catch (unexpected) {
+      console.error("Error al iniciar sesión", unexpected);
+      const detail =
+        unexpected instanceof Error ? `${unexpected.name}: ${unexpected.message}` : String(unexpected);
+      setError(`El servicio no está disponible (${detail}). Intenta de nuevo.`);
     } finally {
       setSending(false);
     }
